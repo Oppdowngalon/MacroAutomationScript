@@ -1,70 +1,68 @@
 # Macro Automation Script
 
-This script allows you to automate mouse and keyboard actions using a sleek and modern GUI.
+This script allows you to automate mouse and keyboard actions using a user-friendly graphical interface built with Tkinter.
+
+## Features
+
+*   **Define Action Sequences:** Add various actions like typing, key presses, hotkeys, mouse clicks, and mouse movements.
+*   **Action Management:**
+    *   **Add Actions:** Easily add new actions to your sequence.
+    *   **Edit Actions:** Modify the type or value of existing actions.
+    *   **Remove Actions:** Delete actions from the sequence.
+    *   **Reorder Actions:** Use "Move Up" and "Move Down" buttons to change the order of actions.
+*   **Save & Load:**
+    *   Save your entire macro sequence (actions and settings) to a JSON file.
+    *   Load previously saved macros to reuse them. (Accessible via File menu)
+*   **Interactive Click Coordinate Capture:**
+    *   For "Click" actions, a "Capture Position" button allows you to click anywhere on your screen to automatically record the X,Y coordinates.
+*   **Flexible Settings:**
+    *   **Interval:** Time (seconds) between each action.
+    *   **Loops:** Number of times the entire action sequence will repeat.
+    *   **Wait Time Between Loops:** Delay (seconds) after one full sequence loop completes and before the next begins.
+    *   **Pause Duration:** Time (minutes) to pause between sets of loops.
+    *   **Number of Sets:** How many times the entire looping cycle (including pauses) should run.
+*   **Execution Control:** Start and stop the macro at any time.
+*   **Status Display:** View the current status and progress of the macro execution.
+*   **DPI Scaling Aware (Windows):** Includes logic to improve coordinate accuracy for "Click" actions in multi-monitor setups with different display scaling percentages.
 
 ## How to Use
 
-1. Run the `macro_app.py` script.
-2. The GUI will open, allowing you to add, remove, and configure macro actions.
+1.  **Prerequisites:** Ensure you have Python installed, along with the necessary libraries.
+    ```bash
+    pip install pyautogui pynput
+    ```
+2.  **Run the Script:**
+    ```bash
+    python macro_app.py
+    ```
+3.  The GUI will open.
+    *   Use the "Add Action", "Edit Action", "Remove Action", "Move Up", "Move Down" buttons to manage your macro sequence.
+    *   For "Click" actions, use the "Capture Position" button in the Add/Edit dialog.
+    *   Configure settings (Interval, Loops, etc.) in the right-hand panel.
+    *   Use "File > Save Actions" to save your work and "File > Load Actions" to load it.
+    *   Click "Start Macro" to run. Click "Stop Macro" to halt execution.
 
-### Macro Actions
+### Action Types
 
-- **Type:** Types the specified text. Enter the text you want to type in the "Value" field.
-- **Press:** Presses a specific key. Enter the key name you want to press in the "Value" field. For example, `enter`, `space`, `tab`, `esc`, `up`, `down`, `left`, `right`, `a`, `b`, `c`, etc., or arrow keys like `left`, `right`, `up`, `down`. You can find a list of valid key names in the PyAutoGUI documentation.
-- **HotKey:** Presses a combination of keys. Enter the keys separated by `+`, for example `ctrl+s`, `ctrl+shift+esc`.
-- **Click:** Clicks at a specific location. When you select "Click" as the action type, click on the screen to set the coordinates.
-- **Move:** Moves the mouse cursor to a specific location. Enter the x and y coordinates separated by a comma, for example `100,200`.
+*   **Type:** Types the specified text.
+*   **Press:** Presses a specific key (e.g., `enter`, `space`, `a`, `ctrl`, `left`). Refer to PyAutoGUI documentation for key names.
+*   **HotKey:** Presses a combination of keys (e.g., `ctrl+s`, `alt+f4`). Separate keys with `+`.
+*   **Click:** Performs a mouse click. Use the "Capture Position" button to set coordinates, or manually enter as "X,Y". If no coordinates are provided, it clicks at the current mouse position.
+*   **Move:** Moves the mouse cursor to "X,Y" coordinates.
 
-### Settings
+## Building from Source (Optional)
 
-- **Interval (sec):** Sets the wait time between each action in seconds.
-- **Loops:** Sets the number of times the macro will repeat.
-- **Wait Time Between Loops (sec):** Sets the wait time between each loop in seconds. This delay occurs after a full cycle of actions is completed and before the next loop begins.
-tempHeader: Settings (Thai)
-
-### Controls
-
-- **Start Macro:** Starts the macro execution.
-- **Stop Macro:** Stops the macro execution.
-- The loop progress is displayed in the GUI window.
+If you wish to create a standalone executable:
+1.  Install PyInstaller: `pip install pyinstaller`
+2.  Navigate to the script's directory in your terminal.
+3.  Run PyInstaller with the provided spec file (`macro_app.spec`), or generate a new one:
+    ```bash
+    pyinstaller --noconsole --onefile macro_app.py
+    ```
+    (You can add `--add-data "icon.ico:."` or other options if needed). The executable will be in the `dist` folder.
 
 ## Notes
 
-- Make sure you have the `pyautogui` library installed. You can install it using `pip install pyautogui`.
-- The script uses `tkinter` for the GUI and has a modern look and feel.
-
-## Thai Version
-
-# สคริปต์การทำงานอัตโนมัติของ Macro
-
-สคริปต์นี้ช่วยให้คุณสามารถทำงานอัตโนมัติของการกระทำของเมาส์และคีย์บอร์ดโดยใช้ GUI ที่ทันสมัยและสวยงาม
-
-## วิธีการใช้งาน
-
-1. เรียกใช้สคริปต์ `macro_app.py`
-2. GUI จะเปิดขึ้น ช่วยให้คุณสามารถเพิ่ม ลบ และกำหนดค่าการกระทำของ Macro ได้
-
-### การกระทำของ Macro
-
-- **Type:** พิมพ์ข้อความที่ระบุ ป้อนข้อความที่คุณต้องการพิมพ์ในช่อง "Value"
-- **Press:** กดปุ่มเฉพาะ ป้อนชื่อปุ่มที่คุณต้องการกดในช่อง "Value" ตัวอย่างเช่น `enter`, `space`, `tab`, `esc`, `up`, `down`, `left`, `right`, `a`, `b`, `c` หรือปุ่มลูกศรเช่น `left`, `right`, `up`, `down` คุณสามารถค้นหารายชื่อชื่อปุ่มที่ถูกต้องได้ในเอกสาร PyAutoGUI
-- **HotKey:** กดปุ่มผสม ป้อนปุ่มที่คั่นด้วย `+` ตัวอย่างเช่น `ctrl+s`, `ctrl+shift+esc`
-- **Click:** คลิกที่ตำแหน่งที่ระบุ เมื่อคุณเลือก "Click" เป็นประเภทการกระทำ ให้คลิกบนหน้าจอเพื่อตั้งค่าพิกัด
-- **Move:** เลื่อนเคอร์เซอร์เมาส์ไปยังตำแหน่งที่ระบุ ป้อนพิกัด x และ y ที่คั่นด้วยเครื่องหมายจุลภาค ตัวอย่างเช่น `100,200`
-
-### การตั้งค่า
-
-- **Interval (วินาที):** กำหนดเวลารอระหว่างการกระทำแต่ละรายการเป็นวินาที
-- **Loops:** กำหนดจำนวนครั้งที่ Macro จะทำซ้ำ
-- **Wait Time Between Loops (วินาที):** กำหนดเวลารอระหว่างแต่ละลูปเป็นวินาที การหน่วงเวลานี้จะเกิดขึ้นหลังจากรอบการทำงานเสร็จสมบูรณ์และก่อนที่ลูปถัดไปจะเริ่มขึ้น
-
-### การควบคุม
-
-- **Start Macro:** เริ่มการทำงานของ Macro
-- **Stop Macro:** หยุดการทำงานของ Macro
-- ความคืบหน้าของลูปจะแสดงในหน้าต่าง GUI
-
-## หมายเหตุ
-
-- โปรดตรวจสอบให้แน่ใจว่าคุณได้ติดตั้งไลบรารี `pyautogui` แล้ว คุณสามารถติดตั้งได้โดยใช้ `pip install pyautogui`
-- สคริปต์นี้ใช้ `tkinter` สำหรับ GUI และมีรูปลักษณ์ที่ทันสมัยและน่าใช้
+*   The script uses `tkinter` for the GUI, `pyautogui` for automation, and `pynput` for global click capture.
+*   For "Click" and "Move" actions, coordinates are based on your primary screen's top-left corner being (0,0).
+*   On Windows, the script attempts to be DPI aware to improve coordinate accuracy on scaled displays.
