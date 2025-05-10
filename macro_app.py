@@ -4,6 +4,22 @@ import pyautogui
 import time
 import threading
 import json
+from pynput import mouse # Added pynput
+
+try:
+    from ctypes import windll
+    # Set process DPI awareness for Windows. 
+    # 1 means System Aware. For Windows 8.1+
+    # For Per-Monitor V2 awareness (more complex to handle): windll.shcore.SetProcessDpiAwarenessContext(-4) 
+    windll.shcore.SetProcessDpiAwareness(1) 
+except AttributeError:
+    # Fallback for older Windows (Vista, 7) or if shcore is not available
+    try:
+        windll.user32.SetProcessDPIAware()
+    except Exception as e_old:
+        print(f"Info: Could not set DPI awareness (older method) - {e_old}")
+except Exception as e:
+    print(f"Info: Could not set DPI awareness - {e} (This is usually fine on non-Windows or if already set by other means)")
 
 class MacroApp:
     def __init__(self, root):
@@ -194,24 +210,21 @@ class MacroApp:
         value_entry = ttk.Entry(dialog)
         value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
-        def show_mouse_coords():
-            coord_window = tk.Toplevel(self.root)
-            coord_window.title("Mouse Coordinates")
-            coord_label = ttk.Label(coord_window, text="")
-            coord_label.pack(padx=10, pady=10)
+        # "Capture Position" button for "Click" type
+        capture_pos_button = ttk.Button(dialog, text="Capture Position", 
+                                        command=lambda: self._start_coordinate_capture(value_entry, dialog))
+        # Initially hidden, shown when "Click" is selected.
+        # Placed on a new row, e.g. row 2, and Add/Cancel buttons shift to row 3.
 
-            def update_coords():
-                x, y = pyautogui.position()
-                coord_label.config(text=f"X: {x}, Y: {y}")
-                coord_window.after(100, update_coords)
-
-            update_coords()
-
-        def update_mouse_coords(event=None):
+        def toggle_capture_button_state(event=None):
             if action_type_combo.get() == "Click":
-                show_mouse_coords()
+                capture_pos_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+            else:
+                capture_pos_button.grid_remove()
 
-        action_type_combo.bind("<<ComboboxSelected>>", update_mouse_coords)
+        action_type_combo.bind("<<ComboboxSelected>>", toggle_capture_button_state)
+        # Call once to set initial state
+        toggle_capture_button_state() 
 
         def add_action():
             action_type = action_type_combo.get()
@@ -220,9 +233,13 @@ class MacroApp:
             self._refresh_action_list() # Use helper
             dialog.destroy()
 
+        # Add/Cancel buttons now on row 3
         add_button = ttk.Button(dialog, text="Add", command=add_action)
-        add_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+        add_button.grid(row=3, column=0, padx=5, pady=5) # Adjusted column span and placement
         
+        cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
+        cancel_button.grid(row=3, column=1, padx=5, pady=5) # Added cancel button
+
         dialog.grid_columnconfigure(1, weight=1)
 
 
@@ -253,24 +270,21 @@ class MacroApp:
         value_entry.insert(0, action["value"])
         value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
-        def show_mouse_coords(): # Defined within edit_action_dialog
-            coord_window = tk.Toplevel(self.root)
-            coord_window.title("Mouse Coordinates")
-            coord_label = ttk.Label(coord_window, text="")
-            coord_label.pack(padx=10, pady=10)
+        # "Capture Position" button for "Click" type
+        capture_pos_button_edit = ttk.Button(dialog, text="Capture Position", 
+                                             command=lambda: self._start_coordinate_capture(value_entry, dialog))
+        # Initially hidden, shown when "Click" is selected.
+        # Placed on row 2, Update/Cancel buttons shift to row 3.
 
-            def update_coords():
-                x, y = pyautogui.position()
-                coord_label.config(text=f"X: {x}, Y: {y}")
-                coord_window.after(100, update_coords)
-
-            update_coords()
-
-        def update_mouse_coords_for_edit(event=None): # Renamed to avoid conflict if class-level one exists
+        def toggle_capture_button_state_edit(event=None):
             if action_type_combo.get() == "Click":
-                show_mouse_coords()
+                capture_pos_button_edit.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+            else:
+                capture_pos_button_edit.grid_remove()
 
-        action_type_combo.bind("<<ComboboxSelected>>", update_mouse_coords_for_edit)
+        action_type_combo.bind("<<ComboboxSelected>>", toggle_capture_button_state_edit)
+        # Call once to set initial state
+        toggle_capture_button_state_edit()
 
         def update_action():
             new_type = action_type_combo.get()
@@ -283,13 +297,43 @@ class MacroApp:
             self.action_list.see(selected_index)
             dialog.destroy()
 
+        # Update/Cancel buttons now on row 3
         update_button = ttk.Button(dialog, text="Update", command=update_action)
-        update_button.grid(row=2, column=0, padx=5, pady=5)
+        update_button.grid(row=3, column=0, padx=5, pady=5) # Adjusted row
 
         cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
-        cancel_button.grid(row=2, column=1, padx=5, pady=5)
+        cancel_button.grid(row=3, column=1, padx=5, pady=5) # Adjusted row
         
         dialog.grid_columnconfigure(1, weight=1)
+
+    def _start_coordinate_capture(self, value_entry_widget, dialog_window):
+        # This method will be called to capture a single mouse click globally
+        # It needs to run the listener in a way that doesn't block Tkinter's main loop
+        # and communicates the result back to the value_entry_widget.
+
+        dialog_window.withdraw() # Hide the dialog
+
+        # Define the click callback
+        def on_click(x, y, button, pressed):
+            if pressed: # Capture on mouse button press
+                coords_str = f"{x},{y}"
+                value_entry_widget.delete(0, tk.END)
+                value_entry_widget.insert(0, coords_str)
+                dialog_window.deiconify() # Show the dialog again
+                self.status_label.config(text="") # Clear status on successful capture
+                # Stop the listener after one click
+                return False 
+        
+        # Start the listener
+        # The listener runs in its own thread by default
+        listener = mouse.Listener(on_click=on_click)
+        listener.start()
+        # No join here, as it would block. Listener stops itself.
+        # We might need a way to inform the user that capture mode is active.
+        # For now, hiding the dialog serves as an indicator.
+        self.status_label.config(text="Click anywhere on screen to capture coordinates...")
+        # Removed problematic self.root.after line
+
 
     def move_action_up(self):
         selected_index_tuple = self.action_list.curselection()
@@ -385,10 +429,22 @@ class MacroApp:
                             pyautogui.hotkey(*keys)
                         elif action_type == "Click":
                             if value:
-                                x, y = map(int, value.split(","))
-                                pyautogui.click(x, y)
+                                x_phys, y_phys = map(int, value.split(","))
+                                try:
+                                    # Ensure root window is updated to get correct fpixels
+                                    self.root.update_idletasks() 
+                                    scale_factor = self.root.winfo_fpixels('1i') / 96.0
+                                    if scale_factor <= 0: # Safety check
+                                        scale_factor = 1.0
+                                except Exception: 
+                                    scale_factor = 1.0 # Default if detection fails
+                                
+                                # Multiply by scale_factor to counteract pyautogui's implicit division
+                                x_adjusted = int(round(x_phys * scale_factor))
+                                y_adjusted = int(round(y_phys * scale_factor))
+                                pyautogui.click(x_adjusted, y_adjusted)
                             else:
-                                pyautogui.click() # Click at current mouse position
+                                pyautogui.click() # Click at current mouse position (no coords to adjust)
                         elif action_type == "Move":
                             x, y = map(int, value.split(","))
                             pyautogui.moveTo(x, y)
