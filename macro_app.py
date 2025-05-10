@@ -1,8 +1,9 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import pyautogui
 import time
 import threading
+import json
 
 class MacroApp:
     def __init__(self, root):
@@ -18,6 +19,80 @@ class MacroApp:
         self.style = ttk.Style()
         self.style.theme_use('clam')
         self.create_widgets()
+        self.create_menu()
+
+    def create_menu(self):
+        menubar = tk.Menu(self.root)
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="Save Actions", command=self.save_actions)
+        file_menu.add_command(label="Load Actions", command=self.load_actions)
+        menubar.add_cascade(label="File", menu=file_menu)
+        self.root.config(menu=menubar)
+
+    def save_actions(self):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        data = {
+            "actions": self.macro_actions,
+            "settings": {
+                "interval": self.interval,
+                "loops": self.loops,
+                "inter_loop_wait": self.inter_loop_wait,
+                "pause_duration": float(self.pause_duration_entry.get()),
+                "num_sets": int(self.num_sets_entry.get())
+            }
+        }
+
+        try:
+            with open(file_path, 'w') as f:
+                json.dump(data, f, indent=4)
+            self.status_label.config(text=f"Actions saved to {file_path}")
+        except Exception as e:
+            self.status_label.config(text=f"Error saving file: {str(e)}")
+
+    def load_actions(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            
+            # Load actions
+            self.macro_actions = data.get('actions', [])
+            self.action_list.delete(0, tk.END)
+            for action in self.macro_actions:
+                self.action_list.insert(tk.END, f"{action['type']}: {action['value']}")
+            
+            # Load settings
+            settings = data.get('settings', {})
+            self.interval = settings.get('interval', 0.1)
+            self.loops = settings.get('loops', 1)
+            self.inter_loop_wait = settings.get('inter_loop_wait', 0)
+            
+            # Update UI
+            self.interval_entry.delete(0, tk.END)
+            self.interval_entry.insert(0, str(self.interval))
+            self.loops_entry.delete(0, tk.END)
+            self.loops_entry.insert(0, str(self.loops))
+            self.inter_loop_wait_entry.delete(0, tk.END)
+            self.inter_loop_wait_entry.insert(0, str(self.inter_loop_wait))
+            self.pause_duration_entry.delete(0, tk.END)
+            self.pause_duration_entry.insert(0, str(settings.get('pause_duration', 0)))
+            self.num_sets_entry.delete(0, tk.END)
+            self.num_sets_entry.insert(0, str(settings.get('num_sets', 1)))
+            
+            self.status_label.config(text=f"Actions loaded from {file_path}")
+        except Exception as e:
+            self.status_label.config(text=f"Error loading file: {str(e)}")
 
     def create_widgets(self):
         self.style.configure('TLabel', background='#f2f2f2', foreground='#333', font=('Arial', 10))
