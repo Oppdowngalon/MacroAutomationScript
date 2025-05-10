@@ -116,6 +116,9 @@ class MacroApp:
         remove_action_button = ttk.Button(action_frame, text="Remove Action", command=self.remove_action)
         remove_action_button.grid(row=2, column=0, padx=5, pady=5, sticky="ew")
 
+        edit_action_button = ttk.Button(action_frame, text="Edit Action", command=self.edit_action_dialog)
+        edit_action_button.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+
         # Settings Frame
         settings_frame = ttk.LabelFrame(self.root, text="Settings")
         settings_frame.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
@@ -207,6 +210,60 @@ class MacroApp:
         if selected_index:
             self.action_list.delete(selected_index)
             self.macro_actions.pop(selected_index[0])
+
+    def edit_action_dialog(self):
+        selected_index = self.action_list.curselection()
+        if not selected_index:
+            return
+            
+        selected_index = selected_index[0]
+        action = self.macro_actions[selected_index]
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Edit Macro Action")
+
+        ttk.Label(dialog, text="Action Type:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        action_type_combo = ttk.Combobox(dialog, values=["Type", "Press", "HotKey", "Click", "Move"])
+        action_type_combo.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        action_type_combo.set(action["type"])
+
+        ttk.Label(dialog, text="Value:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        value_entry = ttk.Entry(dialog)
+        value_entry.insert(0, action["value"])
+        value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+
+        def show_mouse_coords():
+            coord_window = tk.Toplevel(self.root)
+            coord_window.title("Mouse Coordinates")
+            coord_label = ttk.Label(coord_window, text="")
+            coord_label.pack(padx=10, pady=10)
+
+            def update_coords():
+                x, y = pyautogui.position()
+                coord_label.config(text=f"X: {x}, Y: {y}")
+                coord_window.after(100, update_coords)
+
+            update_coords()
+
+        def update_mouse_coords(event=None):
+            if action_type_combo.get() == "Click":
+                show_mouse_coords()
+
+        action_type_combo.bind("<<ComboboxSelected>>", update_mouse_coords)
+
+        def update_action():
+            new_type = action_type_combo.get()
+            new_value = value_entry.get()
+            self.macro_actions[selected_index] = {"type": new_type, "value": new_value}
+            self.action_list.delete(selected_index)
+            self.action_list.insert(selected_index, f"{new_type}: {new_value}")
+            dialog.destroy()
+
+        update_button = ttk.Button(dialog, text="Update", command=update_action)
+        update_button.grid(row=2, column=0, padx=5, pady=5)
+
+        cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
+        cancel_button.grid(row=2, column=1, padx=5, pady=5)
 
     def start_macro(self):
         if not self.running:
