@@ -55,6 +55,11 @@ class MacroApp:
         except Exception as e:
             self.status_label.config(text=f"Error saving file: {str(e)}")
 
+    def _refresh_action_list(self):
+        self.action_list.delete(0, tk.END)
+        for action in self.macro_actions:
+            self.action_list.insert(tk.END, f"{action['type']}: {action['value']}")
+
     def load_actions(self):
         file_path = filedialog.askopenfilename(
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
@@ -68,9 +73,7 @@ class MacroApp:
             
             # Load actions
             self.macro_actions = data.get('actions', [])
-            self.action_list.delete(0, tk.END)
-            for action in self.macro_actions:
-                self.action_list.insert(tk.END, f"{action['type']}: {action['value']}")
+            self._refresh_action_list() # Use helper
             
             # Load settings
             settings = data.get('settings', {})
@@ -108,7 +111,10 @@ class MacroApp:
         action_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
         self.action_list = tk.Listbox(action_frame, width=50, height=10, relief='flat')
-        self.action_list.grid(row=0, column=0, padx=5, pady=5)
+        self.action_list.grid(row=0, column=0, padx=5, pady=5, sticky="nsew") # Added sticky
+        action_frame.grid_rowconfigure(0, weight=1) # Allow listbox to expand
+        action_frame.grid_columnconfigure(0, weight=1) # Allow listbox to expand
+
 
         add_action_button = ttk.Button(action_frame, text="Add Action", command=self.add_action_dialog)
         add_action_button.grid(row=1, column=0, padx=5, pady=5, sticky="ew")
@@ -119,11 +125,19 @@ class MacroApp:
         edit_action_button = ttk.Button(action_frame, text="Edit Action", command=self.edit_action_dialog)
         edit_action_button.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
 
+        move_up_button = ttk.Button(action_frame, text="Move Up", command=self.move_action_up)
+        move_up_button.grid(row=4, column=0, padx=5, pady=5, sticky="ew")
+
+        move_down_button = ttk.Button(action_frame, text="Move Down", command=self.move_action_down)
+        move_down_button.grid(row=5, column=0, padx=5, pady=5, sticky="ew")
+
         # Settings Frame
         settings_frame = ttk.LabelFrame(self.root, text="Settings")
-        settings_frame.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-        settings_frame.pack_propagate(False)
-        settings_frame.update()
+        settings_frame.grid(row=0, column=1, padx=10, pady=10, sticky="ewns") # Added sticky
+        self.root.grid_columnconfigure(0, weight=1) # Allow action_frame to take space
+        self.root.grid_columnconfigure(1, weight=1) # Allow settings_frame to take space
+        self.root.grid_rowconfigure(0, weight=1) # Allow frames row to take space
+
 
         ttk.Label(settings_frame, text="Interval (sec):").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.interval_entry = ttk.Entry(settings_frame)
@@ -149,6 +163,8 @@ class MacroApp:
         self.num_sets_entry = ttk.Entry(settings_frame)
         self.num_sets_entry.insert(0, "1")
         self.num_sets_entry.grid(row=4, column=1, padx=5, pady=5, sticky="ew")
+        
+        settings_frame.grid_columnconfigure(1, weight=1) # Allow entry widgets to expand
 
         # Control Frame
         control_frame = ttk.Frame(self.root)
@@ -162,6 +178,8 @@ class MacroApp:
 
         self.status_label = ttk.Label(control_frame, text="", font=('Arial', 10))
         self.status_label.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        
+        control_frame.grid_columnconfigure(1, weight=1) # Allow stop button and status label to expand
 
     def add_action_dialog(self):
         dialog = tk.Toplevel(self.root)
@@ -199,24 +217,27 @@ class MacroApp:
             action_type = action_type_combo.get()
             value = value_entry.get()
             self.macro_actions.append({"type": action_type, "value": value})
-            self.action_list.insert(tk.END, f"{action_type}: {value}")
+            self._refresh_action_list() # Use helper
             dialog.destroy()
 
         add_button = ttk.Button(dialog, text="Add", command=add_action)
         add_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
+        
+        dialog.grid_columnconfigure(1, weight=1)
+
 
     def remove_action(self):
         selected_index = self.action_list.curselection()
         if selected_index:
-            self.action_list.delete(selected_index)
             self.macro_actions.pop(selected_index[0])
+            self._refresh_action_list() # Use helper
 
     def edit_action_dialog(self):
-        selected_index = self.action_list.curselection()
-        if not selected_index:
-            return
+        selected_index_tuple = self.action_list.curselection()
+        if not selected_index_tuple:
+            return # No item selected
             
-        selected_index = selected_index[0]
+        selected_index = selected_index_tuple[0]
         action = self.macro_actions[selected_index]
         
         dialog = tk.Toplevel(self.root)
@@ -232,7 +253,7 @@ class MacroApp:
         value_entry.insert(0, action["value"])
         value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
-        def show_mouse_coords():
+        def show_mouse_coords(): # Defined within edit_action_dialog
             coord_window = tk.Toplevel(self.root)
             coord_window.title("Mouse Coordinates")
             coord_label = ttk.Label(coord_window, text="")
@@ -245,18 +266,21 @@ class MacroApp:
 
             update_coords()
 
-        def update_mouse_coords(event=None):
+        def update_mouse_coords_for_edit(event=None): # Renamed to avoid conflict if class-level one exists
             if action_type_combo.get() == "Click":
                 show_mouse_coords()
 
-        action_type_combo.bind("<<ComboboxSelected>>", update_mouse_coords)
+        action_type_combo.bind("<<ComboboxSelected>>", update_mouse_coords_for_edit)
 
         def update_action():
             new_type = action_type_combo.get()
             new_value = value_entry.get()
             self.macro_actions[selected_index] = {"type": new_type, "value": new_value}
-            self.action_list.delete(selected_index)
-            self.action_list.insert(selected_index, f"{new_type}: {new_value}")
+            self._refresh_action_list() # Use helper
+            # Reselect the item
+            self.action_list.selection_set(selected_index)
+            self.action_list.activate(selected_index)
+            self.action_list.see(selected_index)
             dialog.destroy()
 
         update_button = ttk.Button(dialog, text="Update", command=update_action)
@@ -264,6 +288,37 @@ class MacroApp:
 
         cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
         cancel_button.grid(row=2, column=1, padx=5, pady=5)
+        
+        dialog.grid_columnconfigure(1, weight=1)
+
+    def move_action_up(self):
+        selected_index_tuple = self.action_list.curselection()
+        if not selected_index_tuple:
+            return
+        selected_index = selected_index_tuple[0]
+
+        if selected_index > 0:
+            action = self.macro_actions.pop(selected_index)
+            self.macro_actions.insert(selected_index - 1, action)
+            self._refresh_action_list()
+            self.action_list.selection_set(selected_index - 1)
+            self.action_list.activate(selected_index - 1)
+            self.action_list.see(selected_index - 1)
+
+
+    def move_action_down(self):
+        selected_index_tuple = self.action_list.curselection()
+        if not selected_index_tuple:
+            return
+        selected_index = selected_index_tuple[0]
+
+        if selected_index < len(self.macro_actions) - 1:
+            action = self.macro_actions.pop(selected_index)
+            self.macro_actions.insert(selected_index + 1, action)
+            self._refresh_action_list()
+            self.action_list.selection_set(selected_index + 1)
+            self.action_list.activate(selected_index + 1)
+            self.action_list.see(selected_index + 1)
 
     def start_macro(self):
         if not self.running:
@@ -274,37 +329,50 @@ class MacroApp:
                 self.pause_duration = float(self.pause_duration_entry.get())
                 self.num_sets = int(self.num_sets_entry.get())
             except ValueError:
-                print("Invalid interval or loop value")
+                self.status_label.config(text="Error: Invalid interval, loop, or wait value.")
+                return
+
+            if not self.macro_actions:
+                self.status_label.config(text="No actions to run.")
                 return
 
             self.running = True
             self.start_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.NORMAL)
-            time.sleep(5)
-            threading.Thread(target=self.run_macro, daemon=True).start()
+            self.status_label.config(text="Macro starting in 5 seconds...")
+            self.root.after(5000, lambda: threading.Thread(target=self.run_macro, daemon=True).start())
+
 
     def stop_macro(self):
         self.running = False
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
+        self.status_label.config(text="Macro stopped by user.")
 
     def run_macro(self):
-        total_sets = self.num_sets
-        sets_completed = 0
-        for set_num in range(total_sets):
-            if not self.running:
-                break
-            next_set_start_time = time.localtime(time.time())
-            next_set_start_str = time.strftime("%H:%M:%S", next_set_start_time)
-            self.status_label.config(text=f"Starting set {set_num+1} of {total_sets}. Next set will start at {next_set_start_str}. Sets completed: {sets_completed}")
-            self.root.update()
-            total_loops = self.loops
-            for i in range(total_loops):
-                if not self.running:
-                    break
-                for action in self.macro_actions:
-                    if not self.running:
-                        break
+        total_sets_to_run = self.num_sets
+        
+        for current_set in range(1, total_sets_to_run + 1):
+            if not self.running: break
+            self.status_label.config(text=f"Running Set {current_set}/{total_sets_to_run}...")
+            self.root.update_idletasks()
+
+            total_loops_to_run = self.loops
+            for current_loop in range(1, total_loops_to_run + 1):
+                if not self.running: break
+                self.status_label.config(text=f"Set {current_set}/{total_sets_to_run} - Loop {current_loop}/{total_loops_to_run}...")
+                self.root.update_idletasks()
+
+                for action_index, action in enumerate(self.macro_actions):
+                    if not self.running: break
+                    
+                    # Highlight current action in listbox
+                    self.action_list.selection_clear(0, tk.END)
+                    self.action_list.selection_set(action_index)
+                    self.action_list.activate(action_index)
+                    self.action_list.see(action_index)
+                    self.root.update_idletasks()
+
                     action_type = action["type"]
                     value = action["value"]
                     try:
@@ -320,29 +388,29 @@ class MacroApp:
                                 x, y = map(int, value.split(","))
                                 pyautogui.click(x, y)
                             else:
-                                pyautogui.click()
+                                pyautogui.click() # Click at current mouse position
                         elif action_type == "Move":
                             x, y = map(int, value.split(","))
                             pyautogui.moveTo(x, y)
                         time.sleep(self.interval)
                     except Exception as e:
-                        print(f"Error executing action: {action}, {e}")
-                        self.stop_macro()
+                        self.status_label.config(text=f"Error: {str(e)}. Stopping.")
+                        self.stop_macro() # Ensure GUI updates
                         return
-                self.status_label.config(text=f"Loop {i+1} of {total_loops} completed in set {set_num+1} of {total_sets}. Sets completed: {sets_completed}")
-                self.root.update()
-                if i < total_loops - 1 and self.running:
+                
+                if current_loop < total_loops_to_run and self.running:
+                    self.status_label.config(text=f"Set {current_set}/{total_sets_to_run} - Waiting for next loop ({self.inter_loop_wait}s)...")
+                    self.root.update_idletasks()
                     time.sleep(self.inter_loop_wait)
-            sets_completed += 1
-            if set_num < total_sets - 1 and self.running:
-                wait_minutes = self.pause_duration
-                next_set_start_time = time.localtime(time.time() + wait_minutes * 60)
-                next_set_start_str = time.strftime("%H:%M:%S", next_set_start_time)
-                self.status_label.config(text=f"Waiting for {wait_minutes} minutes before next set. Next set will start at {next_set_start_str}. Sets completed: {sets_completed}")
-                self.root.update()
-                time.sleep(wait_minutes * 60)
+            
+            if current_set < total_sets_to_run and self.running:
+                self.status_label.config(text=f"Set {current_set}/{total_sets_to_run} completed. Waiting for next set ({self.pause_duration}m)...")
+                self.root.update_idletasks()
+                time.sleep(self.pause_duration * 60)
 
-        self.stop_macro()
+        if self.running: # If macro completed all sets and loops without interruption
+            self.status_label.config(text="Macro finished.")
+            self.stop_macro() # Ensure GUI updates to normal state
 
 if __name__ == "__main__":
     root = tk.Tk()
