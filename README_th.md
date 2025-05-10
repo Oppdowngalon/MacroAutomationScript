@@ -45,7 +45,14 @@
 ### ประเภทการกระทำ (Action Types)
 
 *   **Type (พิมพ์):** พิมพ์ข้อความที่ระบุ
-*   **Press (กดปุ่ม):** กดปุ่มเฉพาะ (เช่น `enter`, `space`, `a`, `ctrl`, `left`) อ้างอิงชื่อปุ่มจากเอกสารของ PyAutoGUI
+*   **Press (กดปุ่ม):** กดปุ่มเฉพาะ ชื่อปุ่มทั่วไปที่ใช้ได้ รวมถึง:
+    *   ปุ่มพิเศษ (Special keys): `enter`, `esc`, `space`, `tab`, `backspace`, `delete`, `insert`
+    *   ปุ่มนำทาง (Navigation): `home`, `end`, `pageup`, `pagedown`, `up`, `down`, `left`, `right`
+    *   ปุ่มปรับเปลี่ยน (Modifier keys): `ctrl`, `alt`, `shift`, `win` (ปุ่ม Windows), `command` (Mac), `option` (Mac)
+    *   ปุ่มฟังก์ชัน (Function keys): `f1`, `f2`, ..., `f12`
+    *   ปุ่มสลับสถานะ (Toggle keys): `capslock`, `numlock`, `scrolllock`
+    *   อื่นๆ (Others): `printscreen`
+    *   ปุ่มตัวอักษรและตัวเลข (Alphanumeric keys) (เช่น `a`, `b`, `1`, `2`) ก็สามารถใช้ได้เช่นกัน
 *   **HotKey (ปุ่มลัด):** กดปุ่มผสม (เช่น `ctrl+s`, `alt+f4`) คั่นปุ่มด้วย `+`
 *   **Click (คลิก):** คลิกเมาส์ ใช้ปุ่ม "Capture Position" เพื่อตั้งค่าพิกัด หรือป้อนด้วยตนเองเป็น "X,Y" หากไม่ระบุพิกัด จะคลิกที่ตำแหน่งปัจจุบันของเมาส์
 *   **Move (เลื่อนเมาส์):** เลื่อนเคอร์เซอร์เมาส์ไปยังพิกัด "X,Y"

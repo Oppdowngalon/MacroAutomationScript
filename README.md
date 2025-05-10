@@ -45,7 +45,14 @@ This script allows you to automate mouse and keyboard actions using a user-frien
 ### Action Types
 
 *   **Type:** Types the specified text.
-*   **Press:** Presses a specific key (e.g., `enter`, `space`, `a`, `ctrl`, `left`). Refer to PyAutoGUI documentation for key names.
+*   **Press:** Presses a specific key. Common key names include:
+    *   Special keys: `enter`, `esc`, `space`, `tab`, `backspace`, `delete`, `insert`
+    *   Navigation: `home`, `end`, `pageup`, `pagedown`, `up`, `down`, `left`, `right`
+    *   Modifier keys: `ctrl`, `alt`, `shift`, `win` (Windows key), `command` (Mac), `option` (Mac)
+    *   Function keys: `f1`, `f2`, ..., `f12`
+    *   Toggle keys: `capslock`, `numlock`, `scrolllock`
+    *   Others: `printscreen`
+    *   Alphanumeric keys (e.g., `a`, `b`, `1`, `2`) can also be used.
 *   **HotKey:** Presses a combination of keys (e.g., `ctrl+s`, `alt+f4`). Separate keys with `+`.
 *   **Click:** Performs a mouse click. Use the "Capture Position" button to set coordinates, or manually enter as "X,Y". If no coordinates are provided, it clicks at the current mouse position.
 *   **Move:** Moves the mouse cursor to "X,Y" coordinates.
