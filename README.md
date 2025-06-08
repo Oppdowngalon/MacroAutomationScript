@@ -1,75 +1,159 @@
-# Macro Automation Script
+# Macro Automation Application
 
-This script allows you to automate mouse and keyboard actions using a user-friendly graphical interface built with Tkinter.
+This Python application provides a graphical interface for automating mouse and keyboard actions using Tkinter. It allows users to create complex automation sequences with precise timing control.
 
 ## Features
 
-*   **Define Action Sequences:** Add various actions like typing, key presses, hotkeys, mouse clicks, and mouse movements.
-*   **Action Management:**
-    *   **Add Actions:** Easily add new actions to your sequence.
-    *   **Edit Actions:** Modify the type or value of existing actions.
-    *   **Remove Actions:** Delete actions from the sequence.
-    *   **Reorder Actions:** Use "Move Up" and "Move Down" buttons to change the order of actions.
-*   **Save & Load:**
-    *   Save your entire macro sequence (actions and settings) to a JSON file.
-    *   Load previously saved macros to reuse them. (Accessible via File menu)
-*   **Interactive Click Coordinate Capture:**
-    *   For "Click" actions, a "Capture Position" button allows you to click anywhere on your screen to automatically record the X,Y coordinates.
-*   **Flexible Settings:**
-    *   **Interval:** Time (seconds) between each action.
-    *   **Loops:** Number of times the entire action sequence will repeat.
-    *   **Wait Time Between Loops:** Delay (seconds) after one full sequence loop completes and before the next begins.
-    *   **Pause Duration:** Time (minutes) to pause between sets of loops.
-    *   **Number of Sets:** How many times the entire looping cycle (including pauses) should run.
-*   **Execution Control:** Start and stop the macro at any time.
-*   **Status Display:** View the current status and progress of the macro execution.
-*   **DPI Scaling Aware (Windows):** Includes logic to improve coordinate accuracy for "Click" actions in multi-monitor setups with different display scaling percentages.
+- **Action Sequencing**: Create sequences of actions including:
+  - Typing text
+  - Pressing keys
+  - Using hotkeys (key combinations)
+  - Mouse clicks at specific coordinates
+  - Mouse movements to specific positions
+- **Action Management**:
+  - Add, edit, and remove actions
+  - Reorder actions with drag-and-drop functionality
+  - Set individual delays for each action
+- **Save & Load**:
+  - Save entire macro configurations (actions + settings) to JSON files
+  - Load saved configurations from JSON files
+- **Interactive Coordinate Capture**:
+  - Click anywhere on screen to capture X,Y coordinates for mouse actions
+- **Advanced Settings**:
+  - Interval: Time (seconds) between actions
+  - Loops: Number of times to repeat the sequence
+  - Wait Time Between Loops: Delay after completing a loop
+  - Pause Duration: Longer breaks between sets of loops
+  - Number of Sets: How many looping cycles to execute
+- **Execution Control**:
+  - Start/stop macro execution at any time
+  - Visual countdown before execution begins
+- **Status Monitoring**:
+  - Real-time status updates
+  - Estimated time of completion (ETA)
+- **DPI Scaling Support**:
+  - Improved coordinate accuracy for multi-monitor setups with different display scaling
 
-## How to Use
+## Dependencies
 
-1.  **Prerequisites:** Ensure you have Python installed, along with the necessary libraries.
-    ```bash
-    pip install pyautogui pynput
-    ```
-2.  **Run the Script:**
-    ```bash
-    python macro_app.py
-    ```
-3.  The GUI will open.
-    *   Use the "Add Action", "Edit Action", "Remove Action", "Move Up", "Move Down" buttons to manage your macro sequence.
-    *   For "Click" actions, use the "Capture Position" button in the Add/Edit dialog.
-    *   Configure settings (Interval, Loops, etc.) in the right-hand panel.
-    *   Use "File > Save Actions" to save your work and "File > Load Actions" to load it.
-    *   Click "Start Macro" to run. Click "Stop Macro" to halt execution.
+The application requires the following Python packages:
+- pyautogui
+- pynput
+
+Install them using:
+```bash
+pip install pyautogui pynput
+```
+
+## Installation
+
+1. Ensure you have Python 3.6+ installed
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```bash
+   python macro_app.py
+   ```
+
+## Usage
+
+1. **Adding Actions**:
+   - Click "Add Action" and select an action type
+   - For click actions, use "Capture Position" to record coordinates
+   - Set individual delays for each action
+   
+2. **Managing Actions**:
+   - Use the action list to view, edit, reorder, or remove actions
+   - Drag actions to reorder them in the sequence
+
+3. **Configuring Settings**:
+   - Set the interval between actions (seconds)
+   - Configure loop count and wait time between loops
+   - Set pause duration and number of sets for longer automation sessions
+
+4. **Saving/Loading**:
+   - Use File > Save Actions to save your configuration
+   - Use File > Load Actions to load a saved configuration
+
+5. **Execution**:
+   - Click "Start Macro" to begin (10-second countdown will start)
+   - Click "Stop Macro" to halt execution at any time
 
 ### Action Types
 
-*   **Type:** Types the specified text.
-*   **Press:** Presses a specific key. Common key names include:
-    *   Special keys: `enter`, `esc`, `space`, `tab`, `backspace`, `delete`, `insert`
-    *   Navigation: `home`, `end`, `pageup`, `pagedown`, `up`, `down`, `left`, `right`
-    *   Modifier keys: `ctrl`, `alt`, `shift`, `win` (Windows key), `command` (Mac), `option` (Mac)
-    *   Function keys: `f1`, `f2`, ..., `f12`
-    *   Toggle keys: `capslock`, `numlock`, `scrolllock`
-    *   Others: `printscreen`
-    *   Alphanumeric keys (e.g., `a`, `b`, `1`, `2`) can also be used.
-*   **HotKey:** Presses a combination of keys (e.g., `ctrl+s`, `alt+f4`). Separate keys with `+`.
-*   **Click:** Performs a mouse click. Use the "Capture Position" button to set coordinates, or manually enter as "X,Y". If no coordinates are provided, it clicks at the current mouse position.
-*   **Move:** Moves the mouse cursor to "X,Y" coordinates.
+| Type   | Description                                                                 | Example Values              |
+|--------|-----------------------------------------------------------------------------|-----------------------------|
+| Type   | Types the specified text                                                    | "Hello World"               |
+| Press  | Presses a specific key                                                      | "enter", "tab", "a", "1"    |
+| HotKey | Presses a combination of keys                                               | "ctrl+s", "alt+f4"          |
+| Click  | Clicks at specified coordinates (use "Capture Position" or enter "X,Y")     | "100,200"                   |
+| Move   | Moves mouse cursor to specified coordinates                                 | "300,400"                   |
+
+## JSON Configuration
+
+Macro configurations are saved in JSON format with the following structure:
+```json
+{
+  "actions": [
+    {
+      "type": "Click",
+      "value": "100,200",
+      "delay": 0.5
+    },
+    {
+      "type": "Type",
+      "value": "Hello World",
+      "delay": 0
+    }
+  ],
+  "settings": {
+    "interval": 0.1,
+    "loops": 5,
+    "inter_loop_wait": 1.0,
+    "pause_duration": 5.0,
+    "num_sets": 3
+  }
+}
+```
 
 ## Building from Source (Optional)
 
-If you wish to create a standalone executable:
-1.  Install PyInstaller: `pip install pyinstaller`
-2.  Navigate to the script's directory in your terminal.
-3.  Run PyInstaller with the provided spec file (`macro_app.spec`), or generate a new one:
-    ```bash
-    pyinstaller --noconsole --onefile macro_app.py
-    ```
-    (You can add `--add-data "icon.ico:."` or other options if needed). The executable will be in the `dist` folder.
+To create a standalone executable:
 
-## Notes
+1. Install PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+   
+2. Build the executable:
+   ```bash
+   pyinstaller --noconsole --onefile macro_app.py
+   ```
+   
+3. The executable will be in the `dist` folder
 
-*   The script uses `tkinter` for the GUI, `pyautogui` for automation, and `pynput` for global click capture.
-*   For "Click" and "Move" actions, coordinates are based on your primary screen's top-left corner being (0,0).
-*   On Windows, the script attempts to be DPI aware to improve coordinate accuracy on scaled displays.
+## File Structure
+
+The application consists of:
+- `macro_app.py`: Main application script
+- `requirements.txt`: Dependency list
+- `README.md`: Documentation (this file)
+
+## Technical Notes
+
+- Built with Python 3.9+ and Tkinter for the GUI
+- Uses pyautogui for automation and pynput for global click capture
+- Coordinates are based on your primary screen's top-left corner (0,0)
+- Implements DPI awareness for accurate positioning on scaled displays
+- Multi-threaded execution to keep the UI responsive during automation
+
+## Troubleshooting
+
+- **Coordinates not accurate on multi-monitor setups**:
+  Ensure all displays have the same scaling percentage or adjust DPI awareness settings
+- **Macro stops unexpectedly**:
+  Check that no dialogs or notifications are interrupting the automation
+- **Key presses not registering**:
+  Ensure the target application has focus and is not blocked by other windows
