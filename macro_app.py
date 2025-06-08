@@ -4,6 +4,7 @@ import pyautogui
 import time
 import threading
 import json
+from datetime import datetime, timedelta # Added for ETA calculation
 from pynput import mouse # Added pynput
 
 try:
@@ -20,6 +21,8 @@ except AttributeError:
         print(f"Info: Could not set DPI awareness (older method) - {e_old}")
 except Exception as e:
     print(f"Info: Could not set DPI awareness - {e} (This is usually fine on non-Windows or if already set by other means)")
+
+BUFFER_TIME = 10 # seconds for initial countdown
 
 class MacroApp:
     def __init__(self, root):
@@ -74,7 +77,9 @@ class MacroApp:
     def _refresh_action_list(self):
         self.action_list.delete(0, tk.END)
         for action in self.macro_actions:
-            self.action_list.insert(tk.END, f"{action['type']}: {action['value']}")
+            # Display delay in the listbox
+            delay_info = f" (Delay: {action.get('delay', 0)}s)" if action.get('delay', 0) > 0 else ""
+            self.action_list.insert(tk.END, f"{action['type']}: {action['value']}{delay_info}")
 
     def load_actions(self):
         file_path = filedialog.askopenfilename(
@@ -195,6 +200,9 @@ class MacroApp:
         self.status_label = ttk.Label(control_frame, text="", font=('Arial', 10))
         self.status_label.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
         
+        self.eta_label = ttk.Label(control_frame, text="", font=('Arial', 10))
+        self.eta_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        
         control_frame.grid_columnconfigure(1, weight=1) # Allow stop button and status label to expand
 
     def add_action_dialog(self):
@@ -210,35 +218,45 @@ class MacroApp:
         value_entry = ttk.Entry(dialog)
         value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
+        ttk.Label(dialog, text="Delay (sec):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        delay_entry = ttk.Entry(dialog)
+        delay_entry.insert(0, "0") # Default delay to 0
+        delay_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+
         # "Capture Position" button for "Click" type
-        capture_pos_button = ttk.Button(dialog, text="Capture Position", 
+        capture_pos_button = ttk.Button(dialog, text="Capture Position",
                                         command=lambda: self._start_coordinate_capture(value_entry, dialog))
         # Initially hidden, shown when "Click" is selected.
-        # Placed on a new row, e.g. row 2, and Add/Cancel buttons shift to row 3.
+        # Placed on a new row, e.g. row 3, and Add/Cancel buttons shift to row 4.
 
         def toggle_capture_button_state(event=None):
             if action_type_combo.get() == "Click":
-                capture_pos_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+                capture_pos_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
             else:
                 capture_pos_button.grid_remove()
 
         action_type_combo.bind("<<ComboboxSelected>>", toggle_capture_button_state)
         # Call once to set initial state
-        toggle_capture_button_state() 
+        toggle_capture_button_state()
 
         def add_action():
             action_type = action_type_combo.get()
             value = value_entry.get()
-            self.macro_actions.append({"type": action_type, "value": value})
+            try:
+                delay = float(delay_entry.get())
+            except ValueError:
+                self.status_label.config(text="Error: Invalid delay value. Please enter a number.")
+                return
+            self.macro_actions.append({"type": action_type, "value": value, "delay": delay})
             self._refresh_action_list() # Use helper
             dialog.destroy()
 
         # Add/Cancel buttons now on row 3
         add_button = ttk.Button(dialog, text="Add", command=add_action)
-        add_button.grid(row=3, column=0, padx=5, pady=5) # Adjusted column span and placement
+        add_button.grid(row=4, column=0, padx=5, pady=5) # Adjusted column span and placement
         
         cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
-        cancel_button.grid(row=3, column=1, padx=5, pady=5) # Added cancel button
+        cancel_button.grid(row=4, column=1, padx=5, pady=5) # Added cancel button
 
         dialog.grid_columnconfigure(1, weight=1)
 
@@ -270,15 +288,20 @@ class MacroApp:
         value_entry.insert(0, action["value"])
         value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
+        ttk.Label(dialog, text="Delay (sec):").grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        delay_entry = ttk.Entry(dialog)
+        delay_entry.insert(0, str(action.get("delay", 0))) # Get existing delay or default to 0
+        delay_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+
         # "Capture Position" button for "Click" type
-        capture_pos_button_edit = ttk.Button(dialog, text="Capture Position", 
+        capture_pos_button_edit = ttk.Button(dialog, text="Capture Position",
                                              command=lambda: self._start_coordinate_capture(value_entry, dialog))
         # Initially hidden, shown when "Click" is selected.
-        # Placed on row 2, Update/Cancel buttons shift to row 3.
+        # Placed on row 3, Update/Cancel buttons shift to row 4.
 
         def toggle_capture_button_state_edit(event=None):
             if action_type_combo.get() == "Click":
-                capture_pos_button_edit.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+                capture_pos_button_edit.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
             else:
                 capture_pos_button_edit.grid_remove()
 
@@ -289,7 +312,12 @@ class MacroApp:
         def update_action():
             new_type = action_type_combo.get()
             new_value = value_entry.get()
-            self.macro_actions[selected_index] = {"type": new_type, "value": new_value}
+            try:
+                new_delay = float(delay_entry.get())
+            except ValueError:
+                self.status_label.config(text="Error: Invalid delay value. Please enter a number.")
+                return
+            self.macro_actions[selected_index] = {"type": new_type, "value": new_value, "delay": new_delay}
             self._refresh_action_list() # Use helper
             # Reselect the item
             self.action_list.selection_set(selected_index)
@@ -299,10 +327,10 @@ class MacroApp:
 
         # Update/Cancel buttons now on row 3
         update_button = ttk.Button(dialog, text="Update", command=update_action)
-        update_button.grid(row=3, column=0, padx=5, pady=5) # Adjusted row
-
+        update_button.grid(row=4, column=0, padx=5, pady=5) # Adjusted row
+ 
         cancel_button = ttk.Button(dialog, text="Cancel", command=dialog.destroy)
-        cancel_button.grid(row=3, column=1, padx=5, pady=5) # Adjusted row
+        cancel_button.grid(row=4, column=1, padx=5, pady=5) # Adjusted row
         
         dialog.grid_columnconfigure(1, weight=1)
 
@@ -322,7 +350,7 @@ class MacroApp:
                 dialog_window.deiconify() # Show the dialog again
                 self.status_label.config(text="") # Clear status on successful capture
                 # Stop the listener after one click
-                return False 
+                return False
         
         # Start the listener
         # The listener runs in its own thread by default
@@ -364,6 +392,48 @@ class MacroApp:
             self.action_list.activate(selected_index + 1)
             self.action_list.see(selected_index + 1)
 
+    def _show_countdown_overlay(self, duration):
+        self.countdown_window = tk.Toplevel(self.root, bg="white") # Explicitly set window background to white
+        self.countdown_window.attributes("-topmost", True)
+        self.countdown_window.attributes("-transparentcolor", "white")
+        self.countdown_window.overrideredirect(True) # Remove window decorations
+
+        # Center the countdown window relative to the main application window
+        self.root.update_idletasks() # Ensure main window geometry is up-to-date
+        main_window_x = self.root.winfo_x()
+        main_window_y = self.root.winfo_y()
+        main_window_width = self.root.winfo_width()
+        main_window_height = self.root.winfo_height()
+
+        countdown_window_width = 200 # Approximate width for the label
+        countdown_window_height = 100 # Approximate height for the label
+
+        x = main_window_x + (main_window_width // 2) - (countdown_window_width // 2)
+        y = main_window_y + (main_window_height // 2) - (countdown_window_height // 2)
+        self.countdown_window.geometry(f"{countdown_window_width}x{countdown_window_height}+{x}+{y}")
+
+        self.countdown_label = tk.Label(self.countdown_window, font=("Arial", 48), bg="white", fg="#00BFFF", anchor="center", justify="center")
+        self.countdown_label.pack(expand=True, fill="both")
+
+        # Removed ETA label from countdown window
+
+        self._update_countdown(duration)
+
+    def _update_countdown(self, remaining):
+        if not self.running: # If macro was stopped during countdown
+            if hasattr(self, 'countdown_window') and self.countdown_window.winfo_exists():
+                self.countdown_window.destroy()
+            return
+
+        if remaining >= 0:
+            self.countdown_label.config(text=str(remaining))
+            self.countdown_window.after(1000, self._update_countdown, remaining - 1)
+        else:
+            if hasattr(self, 'countdown_window') and self.countdown_window.winfo_exists():
+                self.countdown_window.destroy()
+            # Start the macro thread after countdown
+            threading.Thread(target=self.run_macro, daemon=True).start()
+
     def start_macro(self):
         if not self.running:
             try:
@@ -383,15 +453,24 @@ class MacroApp:
             self.running = True
             self.start_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.NORMAL)
-            self.status_label.config(text="Macro starting in 5 seconds...")
-            self.root.after(5000, lambda: threading.Thread(target=self.run_macro, daemon=True).start())
+            self.status_label.config(text="Macro starting in 10 seconds...")
+            
+            # Calculate ETA and display in main window
+            total_duration = self._calculate_total_macro_duration()
+            eta_time = datetime.now() + timedelta(seconds=total_duration + BUFFER_TIME)
+            eta_str = eta_time.strftime("%H:%M:%S")
+            self.eta_label.config(text=f"Estimated finish: {eta_str}")
+ 
+            self._show_countdown_overlay(BUFFER_TIME) # Start countdown
+            # The macro will start after the countdown overlay is dismissed
 
-
-    def stop_macro(self):
+    def stop_macro(self, message="Macro stopped by user."):
         self.running = False
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
-        self.status_label.config(text="Macro stopped by user.")
+        self.status_label.config(text=message)
+        if hasattr(self, 'countdown_window') and self.countdown_window.winfo_exists():
+            self.countdown_window.destroy() # Ensure countdown window is closed on stop
 
     def run_macro(self):
         total_sets_to_run = self.num_sets
@@ -419,6 +498,7 @@ class MacroApp:
 
                     action_type = action["type"]
                     value = action["value"]
+                    delay = action.get("delay", 0) # Get delay, default to 0 if not present
                     try:
                         if action_type == "Type":
                             pyautogui.typewrite(value)
@@ -432,11 +512,11 @@ class MacroApp:
                                 x_phys, y_phys = map(int, value.split(","))
                                 try:
                                     # Ensure root window is updated to get correct fpixels
-                                    self.root.update_idletasks() 
+                                    self.root.update_idletasks()
                                     scale_factor = self.root.winfo_fpixels('1i') / 96.0
                                     if scale_factor <= 0: # Safety check
                                         scale_factor = 1.0
-                                except Exception: 
+                                except Exception:
                                     scale_factor = 1.0 # Default if detection fails
                                 
                                 # Multiply by scale_factor to counteract pyautogui's implicit division
@@ -449,6 +529,8 @@ class MacroApp:
                             x, y = map(int, value.split(","))
                             pyautogui.moveTo(x, y)
                         time.sleep(self.interval)
+                        if delay > 0: # Apply individual action delay
+                            time.sleep(delay)
                     except Exception as e:
                         self.status_label.config(text=f"Error: {str(e)}. Stopping.")
                         self.stop_macro() # Ensure GUI updates
@@ -459,10 +541,48 @@ class MacroApp:
                     self.root.update_idletasks()
                     time.sleep(self.inter_loop_wait)
             
+            # Pause between sets - outside the loop block
             if current_set < total_sets_to_run and self.running:
-                self.status_label.config(text=f"Set {current_set}/{total_sets_to_run} completed. Waiting for next set ({self.pause_duration}m)...")
+                # Calculate next set start time
+                next_set_start = datetime.now() + timedelta(minutes=self.pause_duration)
+                next_set_str = next_set_start.strftime("%H:%M:%S")
+                self.status_label.config(text=f"Set {current_set}/{total_sets_to_run} completed. Next set starts at {next_set_str}")
                 self.root.update_idletasks()
-                time.sleep(self.pause_duration * 60)
+                time.sleep(self.pause_duration * 60)  # Convert minutes to seconds
+
+    def _calculate_total_macro_duration(self):
+        total_delay = 0
+        # Sum individual action delays and intervals
+        for action in self.macro_actions:
+            total_delay += action.get("delay", 0) # Add individual action delay
+            total_delay += self.interval # Add interval after each action
+        
+        # Adjust for loops and sets
+        # Each loop runs all actions once. The total_delay calculated above is for one loop.
+        total_delay_per_loop = total_delay
+        
+        # Total duration for all loops within one set
+        total_duration_within_set = total_delay_per_loop * self.loops
+        total_duration_within_set += (self.loops - 1) * self.inter_loop_wait if self.loops > 1 else 0
+
+        # Total duration for all sets, including pause duration between sets
+        total_macro_duration = total_duration_within_set * self.num_sets
+        total_macro_duration += (self.num_sets - 1) * (self.pause_duration * 60) if self.num_sets > 1 else 0 # Convert minutes to seconds
+
+        return total_macro_duration
+
+    def _calculate_total_macro_duration(self):
+        total_delay = 0
+        for action in self.macro_actions:
+            # Assuming 'delay' might be a property of an action if we add it later
+            # For now, only considering the interval between actions
+            total_delay += self.interval
+        
+        # Add inter-loop wait times and pause duration
+        total_delay += (self.loops - 1) * self.inter_loop_wait if self.loops > 1 else 0
+        total_delay += self.pause_duration * 60 * self.num_sets # Convert minutes to seconds and multiply by number of sets
+
+        return total_delay
 
         if self.running: # If macro completed all sets and loops without interruption
             self.status_label.config(text="Macro finished.")
